@@ -4,6 +4,8 @@ const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth - 50;
 canvas.height = 0.7 * window.innerHeight;
 
+var points = [];
+
 function fft(points) {
     if (points.length == 1) return points
     const N = points.length;
@@ -60,10 +62,11 @@ function toLog(x, x_max, y_max) {
 
 var pointer = null;
 
-function drawGraph(points) {
+function drawGraph() {
     ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
 
-    const max = Math.max(...[...points, 5]);
+    const points_max = Math.max(...points);
+    const max = Math.max(points_max, 5);
 
     const screen_points = [];
 
@@ -72,6 +75,7 @@ function drawGraph(points) {
                             y : 0.85 * canvas.clientHeight - points[i] / max * (0.66 * canvas.clientHeight) });
     }
 
+    // Рисуем график частот
     ctx.beginPath();
     ctx.lineWidth = 1;
     ctx.strokeStyle = "black";
@@ -79,6 +83,18 @@ function drawGraph(points) {
     screen_points.forEach(p => {ctx.lineTo(p.x, p.y)});
     ctx.stroke();
 
+    // Рисуем и пишем максимум
+    const max_pos_y = 0.85 * canvas.clientHeight - (0.66 * canvas.clientHeight);
+    ctx.beginPath();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgb(41, 14, 96)";
+    ctx.moveTo(0, max_pos_y);
+    ctx.lineTo(canvas.width, max_pos_y);
+    ctx.stroke();
+    ctx.font = '18px Arial';
+    ctx.fillText(`A max: ${points_max.toFixed(1)}`, 10, 0.85 * canvas.clientHeight - 0.66 * canvas.clientHeight - 20);
+
+    // Рисуем указатель на частоту
     if (pointer != null) {
         ctx.beginPath();
         ctx.lineWidth = 2;
@@ -116,7 +132,8 @@ navigator.mediaDevices.getUserMedia({ audio: true })
             const complex_points = [];
             inputData.forEach(p => complex_points.push({re : p, im : 0}));
             const freq = fft(complex_points);
-            drawGraph(freq.map(c => {return Math.sqrt(c.re * c.re + c.im * c.im)}));
+            points = freq.map(c => {return Math.sqrt(c.re * c.re + c.im * c.im)});
+            drawGraph();
         };
         
         source.connect(processor);
@@ -127,6 +144,7 @@ navigator.mediaDevices.getUserMedia({ audio: true })
     });
 
 
+
 canvas.addEventListener("touchstart", (e) => {
     const touch = e.touches[0];
     const touchX = touch.clientX - 20;
@@ -135,11 +153,13 @@ canvas.addEventListener("touchstart", (e) => {
 
 canvas.addEventListener("mousemove", (e) => {
     pointer = {x : e.offsetX, f : Math.exp(e.offsetX * Math.log(2048) / canvas.clientWidth) / 2048 * sampleRate / 2};
+    drawGraph();
 });
 canvas.addEventListener("touchmove", (e) => {
     const touch = e.touches[0];
     const touchX = touch.clientX - 20;
     pointer = {x : touchX, f : Math.exp(touchX * Math.log(2048) / canvas.clientWidth) / 2048 * sampleRate / 2};
+    drawGraph();
 });
 
 canvas.addEventListener("mouseleave", (e) => {
